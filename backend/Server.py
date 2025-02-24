@@ -49,7 +49,7 @@ def generator():
     frame_files = os.listdir(frames_path)
     for x in tqdm(frame_files, desc="Processing Frames", unit="frame"):
         frame = x
-        classification = classify(frame)
+        classification = classif(frame)
         
         if classification in ["benign", "malignant"]:
             segment(frame)
@@ -57,7 +57,9 @@ def generator():
             source = os.path.join(frames_path, x)
             destination = os.path.join(output_frames, x)
             shutil.move(source, destination)
-    
+    output_video_path=r"C:\BreastCancer\ChanCode\backend\tempDB\videos\output\video.mpv4"
+    frames_to_video(output_frames,output_video_path,video_path)
+    return send_file(output_video_path, mimetype="video/mp4")
 
     
 

@@ -34,3 +34,6 @@ def overlay(input_image,predicted_mask,save_path):
     overlay = cv2.addWeighted(original_image, 0.7, mask_colored, 0.3, 0)
 
     cv2.imwrite(save_path+"output.png", overlay)
+
+def segment(frame_path):
+    return "hi"
