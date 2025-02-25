@@ -111,7 +111,7 @@ def seg_over():
     x = np.expand_dims(x, axis=0)
     y_pred = model.predict(x, verbose=0)[0]
     y_pred = np.squeeze(y_pred, axis=-1)
-    y_pred = y_pred >= 0.5
+    y_pred = y_pred >= 0.5 
     y_pred = y_pred.astype(np.int32)
     
     # Create a single-channel mask (no need to expand and concatenate)

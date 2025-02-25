@@ -18,7 +18,7 @@ function App() {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('http://localhost:4000/predict', {
+      const response = await fetch('http://127.0.0.1:4000/segmentation', {
         method: 'POST',
         body: formData,
       });
