@@ -10,8 +10,13 @@ import os
 import shutil
 from tqdm import tqdm
 from controller.Classification import *
+from controller.Segmentation import *
+from io import BytesIO
 
 app=Flask(__name__)
+
+UPLOAD_FOLDER = r"C:\BreastCancer\ChanCode\backend\tempDB\temp"
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 frames_path=r"C:\BreastCancer\ChanCode\backend\tempDB\frames"
 output_frames=r"C:\BreastCancer\ChanCode\backend\tempDB\output_frames"
@@ -47,12 +52,13 @@ def generator():
     video.save(video_path)
     frame_splitter(video_path, frames_path)
     frame_files = os.listdir(frames_path)
-    for x in tqdm(frame_files, desc="Processing Frames", unit="frame"):
+    for x in frame_files:
         frame = x
-        classification = classif(frame)
+        path=os.path.join(frames_path,frame)
+        classification = classif(path)
         
         if classification in ["benign", "malignant"]:
-            segment(frame)
+            continue
         else:
             source = os.path.join(frames_path, x)
             destination = os.path.join(output_frames, x)
@@ -63,10 +69,34 @@ def generator():
 
     
 
-# @app.route("/segmentation",methods=["POST"])
-# def seg():
-#     files=request.files["image"]
-
+@app.route("/segmentation",methods=["POST"])
+def seg():
+    files=request.files
+    image_data=files["image"]
+    image = Image.open(image_data).resize((224, 224))
+    image_np = np.array(image)
+    model_path=r"C:\BreastCancer\ChanCode\backend\models\model.keras"
+    with CustomObjectScope({"dice_coef": dice_coef, "dice_loss": dice_loss,"f1sc":f1sc}):
+        model = tf.keras.models.load_model(model_path)
+    x = image_np/255.0 
+    x = np.expand_dims(x, axis=0)
+    y_pred = model.predict(x, verbose=0)[0]
+    y_pred = np.squeeze(y_pred, axis=-1)
+    y_pred = y_pred >= 0.5
+    y_pred = y_pred.astype(np.int32)
+    y_pred = np.expand_dims(y_pred, axis=-1)
+    y_pred = np.concatenate([y_pred, y_pred, y_pred], axis=-1)
+    pred = y_pred * 255
+    pred_image = Image.fromarray(pred.astype(np.uint8))
+    
+    # Save to in-memory file
+    img_io = BytesIO()
+    pred_image.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    # Return the image
+    return send_file(img_io, mimetype='image/png')
+    
 
 if(__name__=="__main__"):
     app.run(host="0.0.0.0",port=4000,debug=True)
