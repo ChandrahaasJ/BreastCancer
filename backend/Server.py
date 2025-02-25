@@ -69,7 +69,7 @@ def generator():
 
     
 
-@app.route("/segmentation",methods=["POST"])
+@app.route("/segmentation_mask",methods=["POST"])
 def seg():
     files=request.files
     image_data=files["image"]
@@ -97,6 +97,43 @@ def seg():
     # Return the image
     return send_file(img_io, mimetype='image/png')
     
+@app.route("/segmentation", methods=["POST"])
+def seg_over():
+    image_data = request.files["image"]
+    image = Image.open(image_data).resize((224, 224))
+    image_np = np.array(image)
+    
+    model_path = r"C:\BreastCancer\ChanCode\backend\models\model.keras"
+    with CustomObjectScope({"dice_coef": dice_coef, "dice_loss": dice_loss, "f1sc": f1sc}):
+        model = tf.keras.models.load_model(model_path)
+    
+    x = image_np/255.0 
+    x = np.expand_dims(x, axis=0)
+    y_pred = model.predict(x, verbose=0)[0]
+    y_pred = np.squeeze(y_pred, axis=-1)
+    y_pred = y_pred >= 0.5
+    y_pred = y_pred.astype(np.int32)
+    
+    # Create a single-channel mask (no need to expand and concatenate)
+    mask = y_pred * 255
+    
+    # Create the colored mask correctly
+    mask_colored = np.zeros_like(image_np)
+    mask_colored[:, :, 2] = mask  # Apply mask to Red channel
+    
+    # Create the overlay
+    overlay = cv2.addWeighted(image_np, 0.7, mask_colored, 0.3, 0)
+    
+    # Convert to PIL Image and return
+    pred_image = Image.fromarray(overlay.astype(np.uint8))
+    
+    # Save to in-memory file
+    img_io = BytesIO()
+    pred_image.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    # Return the image
+    return send_file(img_io, mimetype='image/png')
 
 if(__name__=="__main__"):
     app.run(host="0.0.0.0",port=4000,debug=True)
